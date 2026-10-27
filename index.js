@@ -32,3 +32,14 @@ app.use((req, res, next) => {
             duration: `${duration}ms`
         })
     })
+    
+    //Respone Envelope
+    function successResponse(res, message, data, status = 200) {
+        return res.status(status).json({
+            success: true,
+            message,
+            data,
+            error: null,
+        })
+    }
+})
