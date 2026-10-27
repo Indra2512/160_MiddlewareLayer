@@ -204,4 +204,16 @@ app.use((req, res) => {
     )
 })
 
+//Global Error Handler
+app.use((req, res) => {
+    return errorResponse(
+        res,
+        'Endpoint tidak ditemukan',
+        404
+    )
+})
+
+app.listen(port, () => {
+    console.log(`App running on port ${port}.`)
+})
 
