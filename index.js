@@ -69,7 +69,7 @@ const idSchema = Joi.object({
 //Middleware untuk validasi body
 function validateBody(schema) {
     return (req, res, next) => {
-        const { error } = schema.validate(req.body, {
+        const { error, value } = schema.validate(req.body, {
             abortEarly: false,
             convert: true,
             allowUnknown: false,
@@ -130,7 +130,7 @@ app.post(
         const { id, nama, nim, kelas } = req.body
 
         const result = await pool.query(
-            'INSERT INTO biodata (id, nama, nim, kelas) VALUES ($1, $2, $3, $4) RETURNING *',
+            `INSERT INTO biodata (id, nama, nim, kelas) VALUES ($1, $2, $3, $4) RETURNING *`,
             [id ?? null, nama, nim, kelas]
         )
 
@@ -143,77 +143,55 @@ app.post(
     }
 )
 
-app.put(
-    '/biodata/:id',
-    validateIdParam(idSchema),
-    validateBody(biodataSchema.fork(
-        ['nama', 'nim', 'kelas'],
-        field => field.required()
-    ).fork(['id'], field => field.forbidden())),
-    async (req,res) => {
-        const { id } = req.params
-        const { nama, nim, kelas } = req.body
+app.put('/biodata/:id', (req, res) => {
+    const {id} = req.params;
+    const { nama, nim, kelas } = req.body;
 
-        const result = await pool.query(
-            'UPDATE biodata SET nama = $1, nim = $2, kelas = $3, WHERE id = $4 RETURNING *',
-            [nama, nim, kelas, id]
-        )
+    pool.query(
+        'UPDATE biodata SET nama = $1, nim = $2, kelas = $3 WHERE id = $4 RETURNING *',
+        [nama, nim, kelas, id]
+    )
+    .then(result => {
         if (result.rowCount === 0) {
-            return errorResponse(
-                res, 'Data tidak ditemukan', 404
-            )
+            return res.status(404).json({
+                message: "Data tidak ditemukan"
+            });
         }
+        res.json({
+            message: "Data berhasil diupdate",
+            data: result.rows[0]
+        });
+    })
+    .catch(err => {
+        console.error(err);
+        res.status(500).send('Internal Server Error');
+    });
+});
 
-        return successResponse(
-            res,
-            'Data berhasil diperbarui',
-            result.rows[0]
-        )
-    }
-)
+app.delete('/biodata/:id', (req, res) => {
+    const {id} = req.params;
 
-app.delete(
-    '/biodata/:id',
-    validateIdParam(idSchema),
-    async (req, res) => {
-        const { id } = req.params
-
-        const result = await pool.query(
-            'DELETE FROM biodata WHERE id = $1 RETURNING *',
-            [id]
-        )
-
-          if (result.rowCount === 0) {
-            return errorResponse(
-                res, 'Data tidak ditemukan', 404
-            )
-          }
-          return successResponse(
-            res,
-            'Data berhasil dihapus',
-            result.rows[0]
-        )
-    }
-)
-// Error tidak ditemukan 
-app.use((req, res) => {
-    return errorResponse(
-        res,
-        'Endpoint tidak ditemukan',
-        404
+    pool.query(
+        'DELETE FROM biodata WHERE id = $1 RETURNING *',
+        [id]
     )
-})
-
-//Global Error Handler
-app.use((req, res) => {
-    return errorResponse(
-        res,
-        'Endpoint tidak ditemukan',
-        404
-    )
-})
+    .then(result => {
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                message: "Data tidak ditemukan"
+            });
+        }
+        res.json({
+            message: "Data berhasil dihapus",
+            data: result.rows[0]
+        });
+    })
+    .catch(err => {
+        console.error(err);
+        res.status(500).send('Internal Server Error');
+    });
+});
 
 app.listen(port, () => {
-    console.log(`App running on port ${port}.`)
-})
-
+    console.log(`App running on port ${port}.`);
+}); 
